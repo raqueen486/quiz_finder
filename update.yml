@@ -1,0 +1,35 @@
+name: 퀴즈 자동 업데이트
+
+on:
+  schedule:
+    # 매시간 정각에 자동으로 실행되도록 설정 (추후 원하는 시간으로 변경 가능)
+    - cron: '0 * * * *'
+  workflow_dispatch: 
+    # 우리가 원할 때 수동으로 바로 실행해 볼 수 있는 버튼 만들기
+
+permissions:
+  contents: write
+
+jobs:
+  update-quiz:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 내 저장소 파일 가져오기
+        uses: actions/checkout@v4
+
+      - name: 파이썬 환경 설정하기
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: 파이썬 스크립트 실행하기
+        run: python update_quiz.py
+
+      - name: 변경된 웹페이지 저장(Commit)하기
+        run: |
+          git config --global user.name "github-actions[bot]"
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git add index.html
+          git commit -m "자동 업데이트: 퀴즈 정답 갱신" || echo "변경된 내용이 없습니다."
+          git push
