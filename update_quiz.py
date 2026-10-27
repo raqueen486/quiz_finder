@@ -4,22 +4,34 @@ import re
 
 def get_latest_quiz_info():
     try:
-        # 네이버에 '캐시워크 정답' 검색
-        url = "https://search.naver.com/search.naver?query=%EC%BA%90%EC%8B%9C%EC%9B%8C%ED%81%AC+%EC%A0%95%EB%8B%B5"
-        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64)'})
-        html = urllib.request.urlopen(req).read().decode('utf-8')
+        # 사람들이 실시간으로 정답을 공유하는 커뮤니티 (뽐뿌 앱테크 게시판) 접속
+        url = "https://www.ppomppu.co.kr/zboard/zboard.php?id=apptech"
+        headers = {
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36'
+        }
+        req = urllib.request.Request(url, headers=headers)
         
-        # 검색 결과 중 첫 번째 글 제목(보통 정답이 포함됨) 추출
-        matches = re.findall(r'class=".*?total_tit.*?".*?>(.*?)</a>', html)
-        if matches:
-            # 불필요한 태그 제거 및 길이 조절
-            title = re.sub(r'<[^>]+>', '', matches[0])
-            if len(title) > 35:
-                title = title[:35] + "..."
-            return f"최신 힌트: {title}"
-        return "최신 정답을 찾는 중입니다..."
+        # 해당 사이트는 euc-kr 인코딩을 사용하므로 맞춰서 디코딩 (글자 깨짐 방지)
+        html = urllib.request.urlopen(req).read().decode('euc-kr', errors='ignore')
+        
+        # 게시글 제목 추출 (해당 커뮤니티의 제목 태그 구조)
+        titles = re.findall(r'<font class=list_title>(.*?)</font>', html)
+        
+        for title in titles:
+            # 캐시워크, 토스, 정답 등의 키워드가 포함된 글만 필터링
+            if '캐시' in title or '토스' in title or '정답' in title:
+                # 불필요한 HTML 태그 및 띄어쓰기 기호 정리
+                title = re.sub(r'<[^>]+>', '', title) 
+                title = title.replace('&nbsp;', ' ').strip()
+                
+                if len(title) > 35:
+                    title = title[:35] + "..."
+                return f"커뮤니티 공유 힌트: {title}"
+                
+        return "새로운 정답 글이 올라오기를 기다리는 중입니다."
+        
     except Exception as e:
-        return "정답 업데이트 지연 중"
+        return f"커뮤니티 접속 에러 발생: {e}"
 
 # 1. 한국 표준시(KST)로 현재 시간 가져오기
 now = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
