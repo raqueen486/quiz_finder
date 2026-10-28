@@ -1,37 +1,33 @@
 import urllib.request
+import xml.etree.ElementTree as ET
 import datetime
 import re
 
 def get_latest_quiz_info():
     try:
-        # 사람들이 실시간으로 정답을 공유하는 커뮤니티 (뽐뿌 앱테크 게시판) 접속
-        url = "https://www.ppomppu.co.kr/zboard/zboard.php?id=apptech"
-        headers = {
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 Chrome/120.0.0.0 Safari/537.36'
-        }
-        req = urllib.request.Request(url, headers=headers)
+        # 기계가 읽도록 공식 제공되는 구글 뉴스 RSS 활용 (최근 1일 이내 '캐시워크 정답' 검색)
+        url = "https://news.google.com/rss/search?q=%EC%BA%90%EC%8B%9C%EC%9B%8C%ED%81%AC+%EC%A0%95%EB%8B%B5+when:1d&hl=ko&gl=KR&ceid=KR:ko"
+        req = urllib.request.Request(url, headers={'User-Agent': 'Mozilla/5.0'})
+        xml_data = urllib.request.urlopen(req).read()
         
-        # 해당 사이트는 euc-kr 인코딩을 사용하므로 맞춰서 디코딩 (글자 깨짐 방지)
-        html = urllib.request.urlopen(req).read().decode('euc-kr', errors='ignore')
+        # XML 데이터 파싱
+        root = ET.fromstring(xml_data)
         
-        # 게시글 제목 추출 (해당 커뮤니티의 제목 태그 구조)
-        titles = re.findall(r'<font class=list_title>(.*?)</font>', html)
-        
-        for title in titles:
-            # 캐시워크, 토스, 정답 등의 키워드가 포함된 글만 필터링
-            if '캐시' in title or '토스' in title or '정답' in title:
-                # 불필요한 HTML 태그 및 띄어쓰기 기호 정리
-                title = re.sub(r'<[^>]+>', '', title) 
-                title = title.replace('&nbsp;', ' ').strip()
+        # 첫 번째 뉴스 기사 제목 가져오기
+        for item in root.findall('.//item'):
+            title = item.find('title').text
+            if '캐시워크' in title or '정답' in title:
+                # 제목 뒤에 붙는 언론사 이름( - OO뉴스) 제거
+                title = title.split(' - ')[0] 
                 
                 if len(title) > 35:
                     title = title[:35] + "..."
-                return f"커뮤니티 공유 힌트: {title}"
+                return f"뉴스 힌트: {title}"
                 
-        return "새로운 정답 글이 올라오기를 기다리는 중입니다."
+        return "오늘자 새로운 정답 뉴스가 없습니다."
         
     except Exception as e:
-        return f"커뮤니티 접속 에러 발생: {e}"
+        return f"뉴스 연결 에러: {e}"
 
 # 1. 한국 표준시(KST)로 현재 시간 가져오기
 now = datetime.datetime.utcnow() + datetime.timedelta(hours=9)
